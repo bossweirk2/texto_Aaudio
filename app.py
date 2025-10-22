@@ -2,94 +2,107 @@ import streamlit as st
 import os
 import time
 import glob
-import os
 from gtts import gTTS
 from PIL import Image
 import base64
+from pydub import AudioSegment
 
-st.title("Conversión de Texto a Audio")
-image = Image.open('gato_raton.png')
-st.image(image, width=350)
+# --- CONFIGURACIÓN DE PÁGINA ---
+st.set_page_config(page_title="Conversor de Voz", page_icon="🎙️", layout="centered")
+
+# --- TÍTULO E IMAGEN ---
+st.markdown(
+    """
+    <h1 style="text-align:center; color:#1E3A8A;">🎵 Conversión de Texto a Audio</h1>
+    """,
+    unsafe_allow_html=True,
+)
+image_url = "https://cdn.pixabay.com/photo/2017/06/20/19/22/child-2424026_1280.png"
+st.image(image_url, width=350)
+
 with st.sidebar:
-    st.subheader("Esrcibe y/o selecciona texto para ser escuchado.")
+    st.subheader("🗣️ Escribe un texto para escucharlo en voz alta")
+    st.markdown("---")
 
+# --- CREAR CARPETA TEMPORAL ---
+os.makedirs("temp", exist_ok=True)
 
-try:
-    os.mkdir("temp")
-except:
-    pass
+# --- TEXTO DE HISTORIA INFANTIL ---
+st.subheader("📖 Pequeña historia infantil")
+st.write(
+    "Había una vez una estrella que no quería dormir. "
+    "Cada noche brillaba más fuerte para saludar a los niños del mundo. "
+    "Pero un día, una nube traviesa la abrazó, y la estrella aprendió que descansar también la hacía brillar más."
+)
 
-st.subheader("Una pequeña Fábula.")
-st.write('¡Ay! -dijo el ratón-. El mundo se hace cada día más pequeño. Al principio era tan grande que le tenía miedo. '  
-         ' Corría y corría y por cierto que me alegraba ver esos muros, a diestra y siniestra, en la distancia. ' 
-         ' Pero esas paredes se estrechan tan rápido que me encuentro en el último cuarto y ahí en el rincón está '  
-         ' la trampa sobre la cual debo pasar. Todo lo que debes hacer es cambiar de rumbo dijo el gato...y se lo comió. ' 
-         '  '
-         ' Franz Kafka.'
-        
-        )
-           
-st.markdown(f"Quieres escucharlo?, copia el texto")
-text = st.text_area("Ingrese El texto a escuchar.")
+# --- ÁREA DE TEXTO ---
+st.markdown("¿Quieres escuchar otra historia? Escribe tu propio texto 👇")
+text = st.text_area("Texto a convertir en audio:", height=150)
 
-tld='com'
-option_lang = st.selectbox(
-    "Selecciona el lenguaje",
-    ("Español", "English"))
-if option_lang=="Español" :
-    lg='es'
-if option_lang=="English" :
-    lg='en'
+# --- SELECCIÓN DE IDIOMA ---
+option_lang = st.selectbox("Selecciona el idioma:", ("Español", "English"))
+lg = "es" if option_lang == "Español" else "en"
 
-def text_to_speech(text, tld,lg):
-    
-    tts = gTTS(text,lang=lg) # tts = gTTS(text,'en', tld, slow=False)
-    try:
-        my_file_name = text[0:20]
-    except:
-        my_file_name = "audio"
-    tts.save(f"temp/{my_file_name}.mp3")
-    return my_file_name, text
+# --- SLIDER DE TONO ---
+st.markdown("### 🎚️ Ajusta el tono de la voz")
+pitch_value = st.slider("Tono (pitch)", min_value=-5, max_value=5, value=0, step=1)
 
+# --- FUNCIÓN PARA CONVERTIR TEXTO A AUDIO ---
+def text_to_speech(text, lang):
+    tts = gTTS(text, lang=lang)
+    filename = "temp/audio.mp3"
+    tts.save(filename)
+    return filename
 
-#display_output_text = st.checkbox("Verifica el texto")
+# --- AJUSTAR TONO ---
+def adjust_pitch(file_path, semitones):
+    sound = AudioSegment.from_file(file_path, format="mp3")
+    new_sample_rate = int(sound.frame_rate * (2.0 ** (semitones / 12.0)))
+    shifted = sound._spawn(sound.raw_data, overrides={"frame_rate": new_sample_rate})
+    shifted = shifted.set_frame_rate(44100)
+    shifted.export(file_path, format="mp3")
 
-if st.button("convertir a Audio"):
-     result, output_text = text_to_speech(text, 'com',lg)#'tld
-     audio_file = open(f"temp/{result}.mp3", "rb")
-     audio_bytes = audio_file.read()
-     st.markdown(f"## Tú audio:")
-     st.audio(audio_bytes, format="audio/mp3", start_time=0)
+# --- BOTÓN DE CONVERSIÓN ---
+if st.button("🎧 Convertir a Audio"):
+    if text.strip() == "":
+        st.warning("Por favor, escribe un texto antes de convertirlo.")
+    else:
+        audio_path = text_to_speech(text, lg)
+        if pitch_value != 0:
+            adjust_pitch(audio_path, pitch_value)
 
-     #if display_output_text:
-     
-     #st.write(f" {output_text}")
-    
-#if st.button("ElevenLAabs",key=2):
-#     from elevenlabs import play
-#     from elevenlabs.client import ElevenLabs
-#     client = ElevenLabs(api_key="a71bb432d643bbf80986c0cf0970d91a", # Defaults to ELEVEN_API_KEY)
-#     audio = client.generate(text=f" {output_text}",voice="Rachel",model="eleven_multilingual_v1")
-#     audio_file = open(f"temp/{audio}.mp3", "rb")
+        audio_file = open(audio_path, "rb")
+        audio_bytes = audio_file.read()
 
-     with open(f"temp/{result}.mp3", "rb") as f:
-         data = f.read()
+        st.markdown("## 🔊 Tu audio:")
+        st.audio(audio_bytes, format="audio/mp3", start_time=0)
 
-     def get_binary_file_downloader_html(bin_file, file_label='File'):
+        # --- BOTÓN DE DESCARGA ---
+        with open(audio_path, "rb") as f:
+            data = f.read()
         bin_str = base64.b64encode(data).decode()
-        href = f'<a href="data:application/octet-stream;base64,{bin_str}" download="{os.path.basename(bin_file)}">Download {file_label}</a>'
-        return href
-     st.markdown(get_binary_file_downloader_html("audio.mp3", file_label="Audio File"), unsafe_allow_html=True)
+        href = f'<a href="data:application/octet-stream;base64,{bin_str}" download="voz_santiago.mp3">📥 Descargar Audio</a>'
+        st.markdown(href, unsafe_allow_html=True)
 
+# --- LIMPIEZA AUTOMÁTICA ---
 def remove_files(n):
-    mp3_files = glob.glob("temp/*mp3")
+    mp3_files = glob.glob("temp/*.mp3")
     if len(mp3_files) != 0:
         now = time.time()
         n_days = n * 86400
         for f in mp3_files:
             if os.stat(f).st_mtime < now - n_days:
                 os.remove(f)
-                print("Deleted ", f)
-
 
 remove_files(7)
+
+# --- PIE DE PÁGINA ---
+st.markdown(
+    """
+    <hr>
+    <p style="text-align:center; color:#2563EB;">
+    Hecho con ❤️ por <b>Santiago Velásquez</b>
+    </p>
+    """,
+    unsafe_allow_html=True,
+)
