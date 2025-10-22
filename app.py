@@ -5,7 +5,6 @@ import glob
 from gtts import gTTS
 from PIL import Image
 import base64
-from pydub import AudioSegment
 
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Conversor de Voz", page_icon="🎙️", layout="centered")
@@ -43,34 +42,18 @@ text = st.text_area("Texto a convertir en audio:", height=150)
 option_lang = st.selectbox("Selecciona el idioma:", ("Español", "English"))
 lg = "es" if option_lang == "Español" else "en"
 
-# --- SLIDER DE TONO ---
-st.markdown("### 🎚️ Ajusta el tono de la voz")
-pitch_value = st.slider("Tono (pitch)", min_value=-5, max_value=5, value=0, step=1)
-
-# --- FUNCIÓN PARA CONVERTIR TEXTO A AUDIO ---
+# --- BOTÓN DE CONVERSIÓN ---
 def text_to_speech(text, lang):
     tts = gTTS(text, lang=lang)
     filename = "temp/audio.mp3"
     tts.save(filename)
     return filename
 
-# --- AJUSTAR TONO ---
-def adjust_pitch(file_path, semitones):
-    sound = AudioSegment.from_file(file_path, format="mp3")
-    new_sample_rate = int(sound.frame_rate * (2.0 ** (semitones / 12.0)))
-    shifted = sound._spawn(sound.raw_data, overrides={"frame_rate": new_sample_rate})
-    shifted = shifted.set_frame_rate(44100)
-    shifted.export(file_path, format="mp3")
-
-# --- BOTÓN DE CONVERSIÓN ---
 if st.button("🎧 Convertir a Audio"):
     if text.strip() == "":
         st.warning("Por favor, escribe un texto antes de convertirlo.")
     else:
         audio_path = text_to_speech(text, lg)
-        if pitch_value != 0:
-            adjust_pitch(audio_path, pitch_value)
-
         audio_file = open(audio_path, "rb")
         audio_bytes = audio_file.read()
 
