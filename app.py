@@ -84,7 +84,7 @@ st.markdown(
     """
     <hr>
     <p style="text-align:center; color:#2563EB;">
-    Hecho con ❤️ por <b>Santiago Velásquez</b>
+    Hecho por <b>Santiago Velásquez</b>
     </p>
     """,
     unsafe_allow_html=True,
