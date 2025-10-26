@@ -16,7 +16,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-image_url = "https://www.mariowiki.com/File:Captain_toad_powerstar.png"
+image_url = "282px-Captain_toad_powerstar.png"
 st.image(image_url, width=350)
 
 with st.sidebar:
